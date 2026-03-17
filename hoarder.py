@@ -34,8 +34,6 @@ SUPABASE_URL: str = os.environ["SUPABASE_URL"]
 SUPABASE_KEY: str = os.environ["SUPABASE_KEY"]
 
 GAMMA_EVENTS_URL = "https://gamma-api.polymarket.com/events"
-TARGET_CATEGORIES = {"sports", "politics"}   # lower-cased for comparison
-TOP_N_ACTIVE = 50                            # fallback if no category match
 FETCH_LIMIT = 200                            # max events pulled per request
 TABLE_NAME = "market_history"
 
@@ -133,30 +131,9 @@ def fetch_and_store() -> None:
 
     log.info("Fetched %d events from Gamma API.", len(events))
 
-    # 2. Filter: prefer Sports/Politics (matched via tag slugs); fall back to top-N
-    filtered = [
-        e for e in events
-        if _event_tags(e) & TARGET_CATEGORIES
-    ]
-
-    if filtered:
-        log.info(
-            "Filtered to %d events in target categories: %s",
-            len(filtered),
-            TARGET_CATEGORIES,
-        )
-        working_set = filtered
-    else:
-        log.warning(
-            "No events found in %s — falling back to top-%d by volume.",
-            TARGET_CATEGORIES,
-            TOP_N_ACTIVE,
-        )
-        working_set = events[:TOP_N_ACTIVE]
-
-    # 3. Parse into row dicts
+    # 2. Parse into row dicts — all markets, no category filter
     rows: list[dict] = []
-    for event in working_set:
+    for event in events:
         rows.extend(_parse_market(event))
 
     if not rows:
